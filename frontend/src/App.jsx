@@ -1,17 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SearchBar from './components/SearchBar';
 import StatusFilter from './components/StatusFilter';
 import TaskTable from './components/TaskTable';
 import { useTasks } from './hooks/useTasks';
+
+const PAGE_SIZE = 10;
 
 export default function App() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
 
-  const { tasks, total, loading, error } = useTasks(query, status, page, 10);
+  // Debounce typing so we send one request per pause, not one per keystroke
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(id);
+  }, [query]);
 
-  const totalPages = Math.ceil(total / 10);
+  // A new search/filter must start from page 1, otherwise we can land on a page that no longer exists
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, status]);
+
+  const { tasks, total, loading, error } = useTasks(debouncedQuery, status, page, PAGE_SIZE);
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="app">
